@@ -25,7 +25,7 @@ Misclassifying sensitive data is an ethics concern and there is a possibilty tha
 
 
 ---
-### Summary of Outside Materials (add links to the dataset)
+### Summary of Outside Materials
 
 | Name              | How it was created | Conditions of use |
 |------------------|--------------------|-------------------|
@@ -42,7 +42,7 @@ Misclassifying sensitive data is an ethics concern and there is a possibilty tha
 | `m1.large` VMs | 3 for entire project duration                     | Manage training, and monitoring services |
 | `gpu_mi100`     | 4-hour block twice a week                         | Distributed model training |
 | Floating IPs    | 1 for entire project duration, 1 for sporadic use | API hosting and testing |
-| Persistent Storage | 500GB for project duration                      | Store datasets, models, and logs |
+| Persistent Storage | 1TB for project duration                      | Store datasets, models, and logs |
 | `gpu_a10` | 2 for entire project duration | Vision-language models require GPU acceleration for real-time clinical use
 
 ---
