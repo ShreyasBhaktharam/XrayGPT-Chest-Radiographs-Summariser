@@ -29,8 +29,8 @@ Misclassifying sensitive data is an ethics concern and there is a possibilty tha
 
 | Name              | How it was created | Conditions of use |
 |------------------|--------------------|-------------------|
-| MIMIC-CXR Dataset  | Collected from real-world radiology reports, de-identified | Public, research use (PhysioNet license) |
-| OpenI Dataset     | Chest X-rays from Indiana University hospital network | Public, research use (NIH license) |
+| [MIMIC-CXR Dataset](https://www.physionet.org/content/mimic-cxr-jpg/2.1.0/)  | Collected from real-world radiology reports, de-identified | Public, research use (PhysioNet license) |
+| [OpenI Dataset](https://openi.nlm.nih.gov)     | Chest X-rays from Indiana University hospital network | Public, research use (NIH license) |
 | MedClip (Vision Encoder) | Pretrained model for medical images | Open-source, research use |
 | Vicuna (LLM)      | Fine-tuned LLaMA model for dialogue tasks | Open-source, non-commercial use |
 
