@@ -2,7 +2,9 @@
 
 ### Value Proposition
 
-XrayGPT-CloudMed is an AI-powered chest radiograph analysis system designed to assist radiologists by automatically summarizing X-ray findings and providing interactive diagnostic assistance. The current workflow in radiology involves manual interpretation and report writing, which is **time-consuming, prone to variability, and susceptible to human error**. Our system uses **XrayGPT**, a vision-language model fine-tuned for medical imaging, to generate **structured summaries and answer queries in real-time**, improving diagnostic consistency and reducing workload.
+XrayGPT-CloudMed is an AI-powered chest radiograph analysis system designed to assist radiologists by automatically summarizing X-ray findings and providing interactive diagnostic assistance. The current workflow in radiology involves manual interpretation and report writing, which is **time-consuming, prone to variability, and susceptible to human error**. Our system uses **XrayGPT**, a vision-language model fine-tuned for medical imaging, to generate structured summaries and answer queries in real-time, improving diagnostic consistency and reducing workload.
+
+Misclassifying sensitive data is an ethics concern and there is a possibilty that our system will make mistakes. To mitigate this risk and inform the radiologists, we will attach a confidence score along with the output to give an idea about the quality of the prediction and use their discretion to make an informed decision. 
 
 **Business Metric:** Reduction in **radiologist review time** and improved **diagnostic accuracy**.
 
@@ -12,10 +14,9 @@ XrayGPT-CloudMed is an AI-powered chest radiograph analysis system designed to a
 | Name                            | Responsible for | Link to their commits in this repo |
 |---------------------------------|-----------------|------------------------------------|
 | All team members                | System Design, DevOps, CI/CD & Monitoring, Deployment | TBD |
-| Team member 1                   | Model Development & Training | TBD |
-| Shreyas Bhaktharam                   | Data Pipeline & Experiment Tracking | TBD |
-| Team member 3                   | Infrastructure & Cloud Deployment | TBD |
-| Team member 4 (if applicable)   | CI/CD & Monitoring | TBD |
+| Monish Raman Vishakraman                   | Model Development & Training | TBD |
+| Shreyas Bhaktharam                   | Data Pipeline & Experiment Monitoring | TBD |
+| Rohan Dhengale                   | Infrastructure & Cloud Deployment | TBD |
 
 ---
 ### System Diagram
@@ -23,7 +24,7 @@ XrayGPT-CloudMed is an AI-powered chest radiograph analysis system designed to a
 
 
 ---
-### Summary of Outside Materials
+### Summary of Outside Materials (add links to the dataset)
 
 | Name              | How it was created | Conditions of use |
 |------------------|--------------------|-------------------|
@@ -37,10 +38,11 @@ XrayGPT-CloudMed is an AI-powered chest radiograph analysis system designed to a
 
 | Requirement     | How many/when                                     | Justification |
 |-----------------|---------------------------------------------------|---------------|
-| `m1.medium` VMs | 3 for entire project duration                     | Manage training, inference, and monitoring services |
+| `m1.large` VMs | 3 for entire project duration                     | Manage training, and monitoring services |
 | `gpu_mi100`     | 4-hour block twice a week                         | Distributed model training |
 | Floating IPs    | 1 for entire project duration, 1 for sporadic use | API hosting and testing |
-| Persistent Storage | 50GB for project duration                      | Store datasets, models, and logs |
+| Persistent Storage | 500GB for project duration                      | Store datasets, models, and logs |
+| `gpu_a10` | 2 for entire project duration | Vision-language models require GPU acceleration for real-time clinical use
 
 ---
 ### Detailed Design Plan
@@ -82,5 +84,4 @@ XrayGPT-CloudMed is an AI-powered chest radiograph analysis system designed to a
 4. Develop and deploy **inference API** with real-time monitoring.
 5. Implement **CI/CD, staged deployment, and monitoring dashboards**.
 
-**Final Goal:** A fully automated, scalable, and cloud-native **chest X-ray analysis system** for **radiologists and healthcare providers**.
-
+**Final Goal:** A fully automated, scalable, and cloud-native chest X-ray analysis system for radiologists and healthcare providers.
