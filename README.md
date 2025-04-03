@@ -13,7 +13,7 @@ Misclassifying sensitive data is an ethics concern and there is a possibilty tha
 
 | Name                            | Responsible for | Link to their commits in this repo |
 |---------------------------------|-----------------|------------------------------------|
-| All team members                | System Design, DevOps, CI/CD & Monitoring, Deployment | TBD |
+| All team members                | System Design, DevOps, CI/CD & Monitoring, Deployment | [All commits](https://github.com/ShreyasBhaktharam/XrayGPT-Chest-Radiographs-Summariser/commits/master/) |
 | Monish Raman Vishakraman                   | Model Development & Training | [Monish's commits]() |
 | Shreyas Bhaktharam                   | Data Pipeline & Experiment Monitoring | [Shreyas's commits](https://github.com/ShreyasBhaktharam/XrayGPT-Chest-Radiographs-Summariser/commits?author=ShreyasBhaktharam) |
 | Rohan Dhengale                   | Infrastructure & Cloud Deployment | [Rohan's commits]() |
@@ -53,7 +53,7 @@ Misclassifying sensitive data is an ethics concern and there is a possibilty tha
 - **Components:** Uses **MedClip for vision encoding**, **Vicuna for text generation**, and a **linear transformation layer** for modality alignment.
 - **Justification:** XrayGPT requires domain-specific adaptation; fine-tuning on **217k radiology reports** enhances its performance.
 - **Lecture Relevance:** Implements **DDP/FSDP** for large-scale training and **Ray Tune** for hyperparameter tuning.
-- **Difficulty Points:** Implements **multi-GPU scaling** and **automated re-training**.
+- **Difficulty Points:** Train multiple models and leveraging **multi-GPU scaling** and **automated re-training**.
 
 #### Model Serving and Monitoring Platforms
 
@@ -61,6 +61,7 @@ Misclassifying sensitive data is an ethics concern and there is a possibilty tha
 - **Components:** Uses **Kubernetes for scaling**, **Grafana for monitoring**, and **Prometheus for logging**.
 - **Justification:** Ensures **high availability** and **low response times** for clinical use.
 - **Lecture Relevance:** Implements **quantization, tensor optimizations**, and **multi-model inference handling**.
+- **Difficulty Points:** Leverages specialised GPUs for inference to enable real-time feedback.
 
 #### Data Pipeline
 
@@ -68,7 +69,7 @@ Misclassifying sensitive data is an ethics concern and there is a possibilty tha
 - **Components:** Uses **Kafka for real-time ingestion**, **Apache Spark for processing**, and **PostgreSQL for storage**.
 - **Justification:** Ensures high-quality data for model retraining and evaluation.
 - **Lecture Relevance:** Implements **data validation, storage management, and streaming analytics**.
-- **Difficulty Points:** Includes **real-time data simulation** and **interactive data dashboards**.
+- **Difficulty Points:** Includes **real-time data simulation** and **interactive data dashboards** using Grafana.
 
 #### Continuous X (CI/CD, Training, Deployment)
 
