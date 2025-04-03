@@ -20,6 +20,7 @@ Misclassifying sensitive data is an ethics concern and there is a possibilty tha
 
 ---
 ### System Diagram
+![alt text](https://github.com/ShreyasBhaktharam/XrayGPT-Chest-Radiographs-Summariser/blob/master/xray_gpt_final_system_diagram.png)
 
 
 
