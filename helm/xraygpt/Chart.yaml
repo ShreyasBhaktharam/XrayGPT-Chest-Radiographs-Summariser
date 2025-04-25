@@ -1,0 +1,16 @@
+apiVersion: v2
+name: xraygpt
+description: XrayGPT MLOps deployment chart
+type: application
+version: 1.0.0
+appVersion: "1.0.0"
+dependencies:
+  - name: postgresql
+    version: "11.9.13"
+    repository: "https://charts.bitnami.com/bitnami"
+  - name: kafka
+    version: "20.0.1"
+    repository: "https://charts.bitnami.com/bitnami"
+  - name: spark
+    version: "6.4.3"
+    repository: "https://charts.bitnami.com/bitnami"

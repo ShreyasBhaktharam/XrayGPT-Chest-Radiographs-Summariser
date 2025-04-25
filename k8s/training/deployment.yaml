@@ -1,0 +1,42 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: xraygpt-training
+  namespace: xraygpt
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: training
+  template:
+    metadata:
+      labels:
+        app: training
+    spec:
+      containers:
+      - name: model-trainer
+        image: xraygpt/trainer:latest
+        resources:
+          limits:
+            nvidia.com/gpu: 1
+          requests:
+            memory: "16Gi"
+            cpu: "8"
+        env:
+        - name: MLFLOW_TRACKING_URI
+          valueFrom:
+            configMapKeyRef:
+              name: xraygpt-config
+              key: mlflow-tracking-uri
+        - name: POSTGRES_CONNECTION
+          valueFrom:
+            secretKeyRef:
+              name: xraygpt-secrets
+              key: postgres-connection
+        volumeMounts:
+        - name: model-storage
+          mountPath: /models
+      volumes:
+      - name: model-storage
+        persistentVolumeClaim:
+          claimName: xraygpt-models-pvc

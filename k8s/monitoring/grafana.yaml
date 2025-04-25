@@ -1,0 +1,61 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: grafana-dashboards
+  namespace: monitoring
+data:
+  xraygpt-dashboard.json: |
+    {
+      "dashboard": {
+        "id": null,
+        "title": "XrayGPT MLOps Dashboard",
+        "tags": ["xraygpt", "mlops"],
+        "timezone": "browser",
+        "panels": [
+          {
+            "title": "ETL Processing Rate",
+            "type": "graph",
+            "datasource": "Prometheus",
+            "targets": [
+              {
+                "expr": "rate(xraygpt_etl_processed_records_total[5m])",
+                "legendFormat": "Records/sec"
+              }
+            ]
+          },
+          {
+            "title": "Model Inference Latency",
+            "type": "graph",
+            "datasource": "Prometheus",
+            "targets": [
+              {
+                "expr": "histogram_quantile(0.95, rate(xraygpt_inference_latency_seconds_bucket[5m]))",
+                "legendFormat": "95th percentile"
+              }
+            ]
+          },
+          {
+            "title": "Training Loss",
+            "type": "graph",
+            "datasource": "Prometheus",
+            "targets": [
+              {
+                "expr": "xraygpt_training_loss",
+                "legendFormat": "Loss"
+              }
+            ]
+          },
+          {
+            "title": "Model Confidence Distribution",
+            "type": "heatmap",
+            "datasource": "Prometheus",
+            "targets": [
+              {
+                "expr": "rate(xraygpt_model_confidence_bucket[5m])",
+                "format": "heatmap"
+              }
+            ]
+          }
+        ]
+      }
+    }

@@ -1,0 +1,29 @@
+FROM python:3.9-slim
+
+# Install system dependencies
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    build-essential \
+    curl \
+    && rm -rf /var/lib/apt/lists/*
+
+# Install Python dependencies
+RUN pip install --no-cache-dir \
+    fastapi \
+    uvicorn[standard] \
+    onnxruntime \
+    pillow \
+    numpy \
+    prometheus-fastapi-instrumentator \
+    psycopg2-binary
+
+# Copy application code
+COPY ./api /app/api
+COPY ./config /app/config
+
+WORKDIR /app
+
+ENV PYTHONPATH=/app
+
+EXPOSE 8000
+
+CMD ["uvicorn", "api.main:app", "--host", "0.0.0.0", "--port", "8000"]

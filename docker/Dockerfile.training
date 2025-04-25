@@ -1,0 +1,22 @@
+FROM pytorch/pytorch:2.0.1-cuda11.7-cudnn8-runtime
+
+# Install dependencies
+RUN pip install --no-cache-dir \
+    transformers \
+    mlflow \
+    scikit-learn \
+    pandas \
+    numpy \
+    pillow \
+    psycopg2-binary \
+    prometheus_client
+
+# Copy application code
+COPY ./training /app/training
+COPY ./config /app/config
+
+WORKDIR /app
+
+ENV PYTHONPATH=/app
+
+CMD ["python", "-m", "training.train"]

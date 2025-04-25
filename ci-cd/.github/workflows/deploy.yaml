@@ -1,0 +1,41 @@
+name: Deploy to Chameleon Cloud
+
+on:
+  push:
+    branches: [main]
+    paths:
+    - 'k8s/**'
+    - 'helm/**'
+  workflow_dispatch:
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v3
+    
+    - name: Configure Kubectl
+      uses: azure/setup-kubectl@v3
+      
+    - name: Set up Kubeconfig
+      run: |
+        mkdir -p $HOME/.kube
+        echo "${{ secrets.KUBECONFIG }}" > $HOME/.kube/config
+        
+    - name: Install Helm
+      uses: azure/setup-helm@v3
+      
+    - name: Deploy with Helm
+      run: |
+        helm upgrade --install xraygpt ./helm/xraygpt \
+          --namespace xraygpt \
+          --create-namespace \
+          --set image.tag=${{ github.sha }} \
+          --set postgres.password=${{ secrets.POSTGRES_PASSWORD }} \
+          --wait
+          
+    - name: Check deployment status
+      run: |
+        kubectl rollout status deployment/xraygpt-serving -n xraygpt
+        kubectl rollout status deployment/xraygpt-training -n xraygpt
+        kubectl rollout status deployment/xraygpt-data-pipeline -n xraygpt
