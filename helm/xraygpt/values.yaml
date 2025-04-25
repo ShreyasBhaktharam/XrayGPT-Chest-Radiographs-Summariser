@@ -1,0 +1,86 @@
+# Global values
+global:
+  storageClass: "ceph-block"
+
+# Data pipeline configuration
+dataPipeline:
+  enabled: true
+  replicaCount: 1
+  image:
+    repository: xraygpt/etl-processor
+    tag: latest
+    pullPolicy: IfNotPresent
+  resources:
+    requests:
+      memory: "4Gi"
+      cpu: "2"
+    limits:
+      memory: "8Gi"
+      cpu: "4"
+
+# Training configuration
+training:
+  enabled: true
+  replicaCount: 2
+  image:
+    repository: xraygpt/trainer
+    tag: latest
+    pullPolicy: IfNotPresent
+  resources:
+    requests:
+      memory: "16Gi"
+      cpu: "8"
+      nvidia.com/gpu: 1
+    limits:
+      memory: "32Gi"
+      cpu: "16"
+      nvidia.com/gpu: 1
+
+# Serving configuration
+serving:
+  enabled: true
+  replicaCount: 3
+  image:
+    repository: xraygpt/serving
+    tag: latest
+    pullPolicy: IfNotPresent
+  resources:
+    requests:
+      memory: "4Gi"
+      cpu: "2"
+      nvidia.com/gpu: 1
+    limits:
+      memory: "8Gi"
+      cpu: "4"
+      nvidia.com/gpu: 1
+  service:
+    type: LoadBalancer
+    port: 80
+
+# PostgreSQL configuration
+postgresql:
+  enabled: true
+  auth:
+    database: xraygpt
+    username: xraygpt
+    password: ""  # Set via --set
+  primary:
+    persistence:
+      size: 100Gi
+
+# Kafka configuration
+kafka:
+  enabled: true
+  persistence:
+    size: 50Gi
+  zookeeper:
+    persistence:
+      size: 8Gi
+
+# Monitoring
+monitoring:
+  prometheus:
+    enabled: true
+  grafana:
+    enabled: true
+    adminPassword: ""  # Set via --set

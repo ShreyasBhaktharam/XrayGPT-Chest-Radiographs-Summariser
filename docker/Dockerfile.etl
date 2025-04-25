@@ -1,0 +1,23 @@
+FROM bitnami/spark:3.3.0
+
+# Install Python dependencies
+USER root
+RUN pip install --no-cache-dir \
+    kafka-python \
+    pyarrow \
+    pandas \
+    numpy \
+    pydicom \
+    pillow \
+    prometheus_client
+
+# Copy application code
+COPY ./etl /app/etl
+COPY ./config /app/config
+COPY ./data /app/data
+
+WORKDIR /app
+
+ENV PYTHONPATH=/app
+
+CMD ["python", "-m", "etl.etl_pipeline"]

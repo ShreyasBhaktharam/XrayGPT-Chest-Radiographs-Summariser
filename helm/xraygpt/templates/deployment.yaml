@@ -1,0 +1,49 @@
+{{- if .Values.serving.enabled }}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "xraygpt.fullname" . }}-serving
+  labels:
+    app: {{ include "xraygpt.name" . }}-serving
+spec:
+  replicas: {{ .Values.serving.replicaCount }}
+  selector:
+    matchLabels:
+      app: {{ include "xraygpt.name" . }}-serving
+  template:
+    metadata:
+      labels:
+        app: {{ include "xraygpt.name" . }}-serving
+      annotations:
+        prometheus.io/scrape: "true"
+        prometheus.io/port: "8000"
+    spec:
+      containers:
+        - name: {{ .Chart.Name }}-serving
+          image: "{{ .Values.serving.image.repository }}:{{ .Values.serving.image.tag }}"
+          imagePullPolicy: {{ .Values.serving.image.pullPolicy }}
+          ports:
+            - name: http
+              containerPort: 8000
+              protocol: TCP
+          env:
+            - name: POSTGRES_CONNECTION
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "xraygpt.fullname" . }}-secrets
+                  key: postgres-connection
+          resources:
+            {{- toYaml .Values.serving.resources | nindent 12 }}
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: http
+            initialDelaySeconds: 10
+            periodSeconds: 5
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: http
+            initialDelaySeconds: 15
+            periodSeconds: 10
+{{- end }}

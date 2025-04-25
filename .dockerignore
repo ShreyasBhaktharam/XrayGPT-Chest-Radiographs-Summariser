@@ -1,0 +1,69 @@
+# Git
+.git
+.gitignore
+
+# CI/CD
+.github/
+ci-cd/
+
+# Documentation
+README.md
+docs/
+*.md
+
+# Development files
+.env
+.env.*
+venv/
+env/
+tests/
+test_*.py
+*_test.py
+.pytest_cache/
+.coverage
+
+# IDEs
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Logs
+logs/
+*.log
+
+# Data
+data/raw/
+data/processed/
+data/train/
+data/val/
+models/
+mlruns/
+
+# Notebooks
+*.ipynb
+.ipynb_checkpoints/
+
+# Node modules (if building frontend in Docker)
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Terraform and Kubernetes
+terraform/
+k8s/
+helm/
+*.tfstate
+*.tfstate.*
+*.tfvars
+kubeconfig
+
+# Build artifacts
+build/
+dist/
+*.egg-info/
