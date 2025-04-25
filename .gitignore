@@ -1,0 +1,207 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+share/python-wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+MANIFEST
+
+# Virtual Environment
+venv/
+env/
+ENV/
+.venv/
+.env
+
+# IDEs and Editors
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.project
+.pydevproject
+.settings/
+.DS_Store
+
+# Jupyter Notebook
+.ipynb_checkpoints/
+
+# Data and Models
+data/raw/
+data/processed/
+data/train/
+data/val/
+models/
+*.h5
+*.pt
+*.pth
+*.pkl
+*.onnx
+
+# Medical Data Privacy
+*.dcm
+*.nii
+*.nifti
+*.jpg
+*.jpeg
+*.png
+*.gif
+*.bmp
+*.tiff
+*.tfrecord
+
+# MLflow
+mlruns/
+mlflow.db
+artifacts/
+
+# Spark
+spark-warehouse/
+derby.log
+metastore_db/
+
+# Kafka
+kafka-logs/
+
+# Database
+*.db
+*.sqlite3
+*.sql
+postgres_data/
+
+# Logs
+logs/
+*.log
+.spark_logs/
+
+# Docker
+.docker/
+docker-compose.override.yml
+
+# Kubernetes
+kubeconfig
+*.kubeconfig
+
+# Terraform
+.terraform/
+*.tfstate
+*.tfstate.*
+*.tfvars
+.terraform.lock.hcl
+tfplan
+
+# Helm
+helm/xraygpt/charts/
+helm/xraygpt/values-dev.yaml
+helm/xraygpt/values-prod.yaml
+
+# Node.js (for frontend)
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.npm
+.yarn-integrity
+.cache/
+.parcel-cache/
+.next/
+out/
+.nuxt/
+dist/
+.umi/
+.temp/
+.rts2_cache_cjs/
+.rts2_cache_es/
+.rts2_cache_umd/
+*.tsbuildinfo
+
+# Environment files
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+
+# Coverage reports
+htmlcov/
+.coverage
+.coverage.*
+coverage.xml
+*.cover
+*.py,cover
+.hypothesis/
+.pytest_cache/
+junit.xml
+
+# Monitoring
+prometheus_data/
+grafana_data/
+
+# CI/CD
+.github/workflows/secrets.yml
+ci-cd/secrets/
+
+# Temporary files
+tmp/
+temp/
+*.tmp
+*.temp
+*.bak
+*.backup
+*.old
+
+# OS generated files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+.directory
+
+# Credentials and secrets
+*.pem
+*.key
+*.crt
+*.p12
+*.pfx
+*.jks
+credentials.json
+service-account.json
+secrets.yaml
+
+# Large files
+*.csv
+*.tsv
+*.parquet
+*.feather
+*.h5
+*.hdf5
+*.tar
+*.tar.gz
+*.zip
+*.7z
+*.rar
+
+# Ignore dataset directories
+mimic-cxr/
+openI/
+dataset/
