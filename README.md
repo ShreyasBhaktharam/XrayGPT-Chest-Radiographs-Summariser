@@ -14,9 +14,9 @@ Misclassifying sensitive data is an ethics concern and there is a possibilty tha
 | Name                            | Responsible for | Link to their commits in this repo |
 |---------------------------------|-----------------|------------------------------------|
 | All team members                | System Design, DevOps, CI/CD & Monitoring, Deployment | [All commits](https://github.com/ShreyasBhaktharam/XrayGPT-Chest-Radiographs-Summariser/commits/master/) |
-| Monish Raman Vishakraman                   | Model Development & Training | [Monish's commits]() |
-| Shreyas Bhaktharam                   | Data Pipeline & Experiment Monitoring | [Shreyas's commits](https://github.com/ShreyasBhaktharam/XrayGPT-Chest-Radiographs-Summariser/commits?author=ShreyasBhaktharam) |
-| Rohan Dhengale                   | Infrastructure & Cloud Deployment | [Rohan's commits]() |
+| Monish Raman Vishakraman                   | Model serving and optimization | [Monish's commits]() |
+| Shreyas Bhaktharam                   | Data Pipeline & Infrastructure setup | [Shreyas's commits](https://github.com/ShreyasBhaktharam/XrayGPT-Chest-Radiographs-Summariser/commits?author=ShreyasBhaktharam) |
+| Rohan Dhengale                   | Model Development & Training | [Rohan's commits]() |
 
 ---
 ### System Diagram
