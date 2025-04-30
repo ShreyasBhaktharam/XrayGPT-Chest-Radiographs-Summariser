@@ -1,23 +1,29 @@
-variable "instance_count" {
-  description = "Number of GPU instances for training"
-  type        = number
-  default     = 2
-}
-
-variable "data_volume_size" {
-  description = "Size of data volume in GB"
-  type        = number
-  default     = 1000
-}
-
-variable "environment" {
-  description = "Deployment environment (dev, staging, prod)"
+variable "vm_name" {
+  description = "Name of the virtual machine"
   type        = string
-  default     = "dev"
 }
 
-variable "key_pair" {
+variable "flavor_name" {
+  description = "Flavor to use for the virtual machine"
+  type        = string
+}
+
+variable "image_name" {
+  description = "Image to use for the virtual machine"
+  type        = string
+}
+
+variable "key_pair_name" {
   description = "SSH key pair name"
   type        = string
-  default     = "xraygpt-key"
+}
+
+variable "security_groups" {
+  description = "Security groups to attach to the virtual machine"
+  type        = list(string)
+}
+
+variable "network_name" {
+  description = "Network to attach to the virtual machine"
+  type        = string
 }

@@ -67,7 +67,7 @@ services:
     ports:
       - "9090:9090"
     volumes:
-      - ./k8s/monitoring/prometheus-config.yaml:/etc/prometheus/prometheus.yml
+      - ./k8s/monitoring/prometheus.yaml:/etc/prometheus/prometheus.yml
       - prometheus_data:/prometheus
     command:
       - '--config.file=/etc/prometheus/prometheus.yml'
@@ -89,7 +89,6 @@ services:
     networks:
       - xraygpt-network
 
-  # Comment out the services that need building for now
   # etl-processor:
   #   build:
   #     context: .
