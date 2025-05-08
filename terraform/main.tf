@@ -188,10 +188,12 @@ resource "openstack_compute_instance_v2" "xraygpt_vm" {
       mlflow:
         image: python:3.9-slim
         ports:
-          - "6000:6000"
+          - "6000:5000"  # Map container port 5000 to host port 6000
         command: >
           bash -c "pip install mlflow==2.3.0 &&
-                   mlflow server --host 0.0.0.0 --port 6000 --backend-store-uri sqlite:///mlflow.db --default-artifact-root ./artifacts"
+                  mkdir -p /mlflow/mlruns &&
+                  cd /mlflow &&
+                  mlflow ui --host 0.0.0.0"
         volumes:
           - mlflow_data:/mlflow
         networks:

@@ -1,0 +1,325 @@
+---
+# Ansible Playbook for XrayGPT Deployment
+# This playbook automates the setup and deployment of the XrayGPT MLOps system
+
+- name: XrayGPT Deployment
+  hosts: xraygpt_servers
+  become: true
+  vars:
+    app_dir: /opt/xraygpt
+    data_dir: /data/xraygpt
+    models_dir: /models/xraygpt
+    postgres_password: "{{ vault_postgres_password }}"
+    kafka_bootstrap_servers: "localhost:9092"
+    mlflow_tracking_uri: "http://localhost:6000"
+    #domain_name: "xraygpt.example.com"
+    app_version: "latest"
+    git_repo: "https://github.com/ShreyasBhaktharam/XrayGPT-Chest-Radiographs-Summariser.git"
+    git_branch: "master"
+
+  tasks:
+    - name: Update apt cache
+      apt:
+        update_cache: yes
+
+    - name: Install dependencies
+      apt:
+        name:
+          - apt-transport-https
+          - ca-certificates
+          - curl
+          - gnupg
+          - lsb-release
+          - git
+          - python3-pip
+          - python3-dev
+          - build-essential
+          - openjdk-11-jdk
+        state: present
+
+    # Docker Installation
+    - name: Check if Docker repository is already configured
+      stat:
+        path: /etc/apt/sources.list.d/docker.list
+      register: docker_repo_file
+
+    - name: Remove existing Docker repository configuration
+      file:
+        path: "{{ item }}"
+        state: absent
+      with_items:
+        - /etc/apt/sources.list.d/docker.list
+        - /etc/apt/keyrings/docker.gpg
+        - /etc/apt/sources.list.d/download_docker_com_linux_ubuntu.list
+      when: docker_repo_file.stat.exists
+      
+    - name: Create Docker keyring directory
+      file:
+        path: /etc/apt/keyrings
+        state: directory
+        mode: '0755'
+
+    - name: Add Docker GPG key
+      get_url:
+        url: https://download.docker.com/linux/ubuntu/gpg
+        dest: /tmp/docker.gpg
+        mode: '0644'
+
+    - name: Dearmor Docker GPG key
+      shell: |
+        mkdir -p /etc/apt/keyrings
+        cat /tmp/docker.gpg | gpg --dearmor -o /etc/apt/keyrings/docker.gpg
+        chmod a+r /etc/apt/keyrings/docker.gpg
+      args:
+        creates: /etc/apt/keyrings/docker.gpg
+
+    - name: Add Docker repository
+      apt_repository:
+        repo: "deb [arch=amd64 signed-by=/etc/apt/keyrings/docker.gpg] https://download.docker.com/linux/ubuntu {{ ansible_distribution_release }} stable"
+        state: present
+        update_cache: yes
+        filename: docker
+
+    - name: Install Docker
+      apt:
+        name:
+          - docker-ce
+          - docker-ce-cli
+          - containerd.io
+        state: present
+
+    - name: Install Docker Compose
+      get_url:
+        url: https://github.com/docker/compose/releases/download/v2.20.0/docker-compose-linux-x86_64
+        dest: /usr/local/bin/docker-compose
+        mode: '0755'
+
+    - name: Add current user to docker group
+      user:
+        name: "{{ ansible_user }}"
+        groups: docker
+        append: yes
+
+    # Create necessary directories
+    - name: Create application directories
+      file:
+        path: "{{ item }}"
+        state: directory
+        mode: '0755'
+        owner: "{{ ansible_user }}"
+        group: "{{ ansible_user }}"
+      with_items:
+        - "{{ app_dir }}"
+        - "{{ data_dir }}"
+        - "{{ models_dir }}"
+        - "{{ data_dir }}/raw"
+        - "{{ data_dir }}/processed"
+        - "{{ app_dir }}/k8s/monitoring"
+        - "{{ app_dir }}/config"
+        - "{{ app_dir }}/data"
+        - "{{ app_dir }}/etl"
+        - "{{ app_dir }}/training"
+
+    # Clone repository
+    - name: Clone XrayGPT repository
+      git:
+        repo: "https://github.com/ShreyasBhaktharam/XrayGPT-Chest-Radiographs-Summariser.git"
+        dest: "{{ app_dir }}/repo"
+        version: "{{ git_branch }}"
+        accept_hostkey: true
+        depth: 1
+      become: false
+
+    # Copy files from cloned repo to working directory
+    - name: Copy application files
+      copy:
+        src: "{{ app_dir }}/repo/{{ item.src }}"
+        dest: "{{ app_dir }}/{{ item.dest }}"
+        remote_src: yes
+        owner: "{{ ansible_user }}"
+        group: "{{ ansible_user }}"
+      with_items:
+        - { src: "config/settings.py", dest: "config/settings.py" }
+        - { src: "docker-compose.yml", dest: "docker-compose.yml" }
+        - { src: "requirements.txt", dest: "requirements.txt" }
+        - { src: "k8s/monitoring/prometheus.yaml", dest: "k8s/monitoring/prometheus.yaml" }
+        - { src: "k8s/monitoring/grafana.yaml", dest: "k8s/monitoring/grafana.yaml" }
+        - { src: "etl/", dest: "etl/" }
+        - { src: "data/", dest: "data/" }
+        - { src: "training/", dest: "training/" }
+
+    # Configure environment settings
+    - name: Create settings.py configuration
+      template:
+        src: templates/settings.py.j2
+        dest: "{{ app_dir }}/config/settings.py"
+        owner: "{{ ansible_user }}"
+        group: "{{ ansible_user }}"
+        mode: '0644'
+
+    # Create Docker Compose file with environment variables
+    - name: Create Docker Compose file
+      template:
+        src: templates/docker-compose.yml.j2
+        dest: "{{ app_dir }}/docker-compose.yml"
+        owner: "{{ ansible_user }}"
+        group: "{{ ansible_user }}"
+        mode: '0644'
+
+    # Create data directory with sample metadata.csv
+    - name: Create sample metadata.csv
+      template:
+        src: templates/metadata.csv.j2
+        dest: "{{ data_dir }}/raw/metadata.csv"
+        owner: "{{ ansible_user }}"
+        group: "{{ ansible_user }}"
+        mode: '0644'
+
+    # Create initial Prometheus config
+    - name: Configure Prometheus
+      template:
+        src: templates/prometheus.yml.j2
+        dest: "{{ app_dir }}/k8s/monitoring/prometheus.yaml"
+        owner: "{{ ansible_user }}"
+        group: "{{ ansible_user }}"
+        mode: '0644'
+
+    # Install Python dependencies
+    - name: Install Python requirements
+      pip:
+        requirements: "{{ app_dir }}/requirements.txt"
+        state: present
+      become: true
+
+    # Install community.docker collection
+    - name: Install community.docker collection
+      ansible.builtin.shell: ansible-galaxy collection install community.docker
+      delegate_to: localhost
+      become: false
+      changed_when: false
+
+    # Start services with Docker Compose V2
+    - name: Start Docker Compose services
+      community.docker.docker_compose_v2:
+        project_src: "{{ app_dir }}"
+        state: present
+      register: output
+
+    # Wait for services to be fully available
+    - name: Wait for PostgreSQL to be ready
+      wait_for:
+        host: localhost
+        port: 5432
+        timeout: 60
+
+    - name: Wait for Kafka to be ready
+      wait_for:
+        host: localhost
+        port: 9092
+        timeout: 60
+
+    - name: Wait for MLflow to be ready
+      wait_for:
+        host: localhost
+        port: 6000
+        timeout: 60
+
+    - name: Wait for Grafana to be ready
+      wait_for:
+        host: localhost
+        port: 3000
+        timeout: 60
+
+    # # Configure Grafana dashboards (not sure if we need this)
+    # - name: Wait for Grafana API to be available
+    #   uri:
+    #     url: http://localhost:3000/api/health
+    #     method: GET
+    #     status_code: 200
+    #   register: result
+    #   until: result.status == 200
+    #   retries: 60
+    #   delay: 1
+
+    # Set up sample database structure
+    - name: Create PostgreSQL database tables
+      shell: >
+        docker exec -i $(docker ps -qf "name=postgres") psql -U xraygpt -d xraygpt -c "
+        CREATE TABLE IF NOT EXISTS patients (
+          id VARCHAR PRIMARY KEY,
+          gender VARCHAR,
+          age INTEGER,
+          created_at TIMESTAMP DEFAULT NOW()
+        );
+        CREATE TABLE IF NOT EXISTS studies (
+          id VARCHAR PRIMARY KEY,
+          patient_id VARCHAR REFERENCES patients(id),
+          study_date TIMESTAMP,
+          created_at TIMESTAMP DEFAULT NOW()
+        );
+        CREATE TABLE IF NOT EXISTS images (
+          id VARCHAR PRIMARY KEY,
+          study_id VARCHAR REFERENCES studies(id),
+          view_position VARCHAR,
+          file_path VARCHAR,
+          processed BOOLEAN DEFAULT FALSE,
+          created_at TIMESTAMP DEFAULT NOW()
+        );
+        CREATE TABLE IF NOT EXISTS reports (
+          id VARCHAR PRIMARY KEY,
+          study_id VARCHAR REFERENCES studies(id),
+          content TEXT,
+          findings JSONB,
+          impression TEXT,
+          generated_at TIMESTAMP DEFAULT NOW(),
+          confidence FLOAT,
+          model_version VARCHAR
+        );
+        CREATE TABLE IF NOT EXISTS model_versions (
+          id SERIAL PRIMARY KEY,
+          version VARCHAR UNIQUE,
+          mlflow_run_id VARCHAR,
+          metrics JSONB,
+          created_at TIMESTAMP DEFAULT NOW(),
+          deployed BOOLEAN DEFAULT FALSE
+        );"
+      ignore_errors: true
+
+    # Create necessary Kafka topics
+    - name: Create Kafka topics
+      shell: >
+        docker exec -i $(docker ps -qf "name=kafka") kafka-topics.sh 
+        --bootstrap-server localhost:9092 
+        --create --if-not-exists 
+        --topic xraygpt-raw 
+        --partitions 3 
+        --replication-factor 1
+      ignore_errors: true
+
+    - name: Create Kafka processed topic
+      shell: >
+        docker exec -i $(docker ps -qf "name=kafka") kafka-topics.sh 
+        --bootstrap-server localhost:9092 
+        --create --if-not-exists 
+        --topic xraygpt-processed 
+        --partitions 3 
+        --replication-factor 1
+      ignore_errors: true
+
+    # Run initial ETL pipeline (optional, commented out for safety)
+    # - name: Run initial ETL pipeline
+    #   command: python -m etl.etl_pipeline --mode etl --batch-size 10 --num-batches 1
+    #   args:
+    #     chdir: "{{ app_dir }}"
+    #   become: false
+    #   ignore_errors: true
+
+    - name: Display deployment information
+      debug:
+        msg:
+          - "XrayGPT deployment completed!"
+          - "Access services at:"
+          - "  - Grafana: http://{{ ansible_host }}:3000 (admin/admin)"
+          - "  - MLflow: http://{{ ansible_host }}:6000"
+          - "  - Spark UI: http://{{ ansible_host }}:8080"
+          - "  - Prometheus: http://{{ ansible_host }}:9090"

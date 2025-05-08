@@ -7,7 +7,7 @@ output "instance_ip" {
 }
 
 output "ssh_command" {
-  value = "ssh ubuntu@${openstack_networking_floatingip_v2.xraygpt_floating_ip.address}"
+  value = "ssh cc@${openstack_networking_floatingip_v2.xraygpt_floating_ip.address}"
 }
 
 output "grafana_url" {
