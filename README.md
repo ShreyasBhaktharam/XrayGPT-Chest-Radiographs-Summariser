@@ -113,6 +113,11 @@ Measurement: Track time stamps from image upload to report generation in the hos
 ### Different dashboards and training runs
 
 #### Prometheus
+![prometheus-metrics](prometheus-metrics.jpeg)
 #### Grafana
+![grafana-1](grafana_dashboard.jpeg)
+![grafana-2](grafana_dashboard_responses.jpeg)
 #### Mlflow
+![mlflow](mlflow-experiments.png)
 #### FastAPI inference latency
+![fastapi](fastapi-inference-latency.png)
