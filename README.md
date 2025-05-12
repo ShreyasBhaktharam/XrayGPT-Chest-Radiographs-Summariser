@@ -102,6 +102,21 @@ After that, run the ansible playbook with this command:
 ansible-playbook -i inventory.ini xraygpt-deploy.yml
 ```
 
+Run the training pipeline:
+```
+torchrun --nproc-per-node NUM_GPU train.py --cfg-path train_configs/xraygpt_openi_finetune.yaml
+```
+
+Run the fastapi server:
+```
+python demo.py --cfg-path eval_configs/xraygpt_eval.yaml  --gpu-id 0
+```
+
+Run the final flask app:
+```
+python3 app.py --cfg-path eval_configs/xraygpt_eval.yaml --gpu-id 0
+```
+
 ### Different dashboards and training runs
 
 #### Prometheus
