@@ -111,3 +111,8 @@ Target with XrayGPT: ≤30 minutes.
 Measurement: Track time stamps from image upload to report generation in the hospital’s EHR system.
 
 ### Different dashboards and training runs
+
+#### Prometheus
+#### Grafana
+#### Mlflow
+#### FastAPI inference latency
