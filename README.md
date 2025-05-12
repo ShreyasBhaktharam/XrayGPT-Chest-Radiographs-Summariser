@@ -112,4 +112,5 @@ ansible-playbook -i inventory.ini xraygpt-deploy.yml
 #### Mlflow
 ![mlflow](mlflow-experiments.png)
 #### FastAPI inference latency
-![fastapi](fastapi-inference-latency.png)
+![fastapi](20-requests-load-test.jpeg)
+![fastapi](200-load-test-fail.jpeg)
