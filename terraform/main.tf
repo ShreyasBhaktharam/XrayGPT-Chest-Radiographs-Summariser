@@ -74,7 +74,12 @@ resource "openstack_networking_secgroup_rule_v2" "api" {
 resource "openstack_blockstorage_volume_v3" "xraygpt_data" {
   name        = "xraygpt-data"
   description = "Data volume for XrayGPT services"
-  size        = 100  # Size in GB
+  size        = 100 
+}
+
+resource "openstack_compute_volume_attach_v2" "xraygpt_data_attach" {
+  instance_id = openstack_compute_instance_v2.xraygpt_vm.id
+  volume_id   = openstack_blockstorage_volume_v3.xraygpt_data.id
 }
 
 # Create the virtual machine

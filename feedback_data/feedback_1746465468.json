@@ -1,0 +1,7 @@
+{
+  "query": "Take a look at this chest x-ray and describe the findings and impression.",
+  "original_response": "Hello, This is a chest x - ray of a patient suffering from pneumonia. It is showing an air filled space where there is no lung tissue or any signs of lung inflammation. This x - ray also shows the patient with an airway and bronchus. This x - ray will be interpreted by an x - ray technologist. Thanks for using XrayGPT for your health questions.</s>",
+  "modified_response": "Hello, This is a chest x - ray of a patient suffering from pneumonia. It is showing an air filled space where there is no lung tissue or any signs of lung inflammation. This x - ray also shows the patient with a bronchus. This x - ray will be interpreted by an x - ray technologist. Thanks for using XrayGPT for your health questions.</s>",
+  "feedback_type": "modify",
+  "timestamp": 1746465468.5949848
+}

@@ -1,0 +1,152 @@
+# docker-compose.canary.yml
+version: '3.8'
+
+services:
+  api-canary:
+    image: xraygpt/serving:${VERSION:-latest}
+    ports:
+      - "8002:8000"
+    environment:
+      - ENVIRONMENT=canary
+      - MODEL_PATH=/models/xraygpt-latest.onnx
+      - POSTGRES_CONNECTION=postgresql://xraygpt:password@postgres:5432/xraygpt
+      - LOG_LEVEL=INFO
+      - TRAFFIC_FRACTION=0.1  # Initially receives 10% of traffic
+    volumes:
+      - model_storage:/models
+    depends_on:
+      - postgres
+    networks:
+      - xraygpt-network
+    deploy:
+      resources:
+        limits:
+          cpus: '2'
+          memory: 4G
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # Monitoring for Canary
+  prometheus-canary:
+    image: prom/prometheus:v2.42.0
+    ports:
+      - "9092:9090"
+    volumes:
+      - ./monitoring/prometheus-canary.yml:/etc/prometheus/prometheus.yml
+      - prometheus_canary_data:/prometheus
+    networks:
+      - xraygpt-network
+
+  grafana-canary:
+    image: grafana/grafana:9.4.3
+    ports:
+      - "3002:3000"
+    environment:
+      GF_SECURITY_ADMIN_PASSWORD: admin
+      GF_SECURITY_ADMIN_USER: admin
+      GF_AUTH_ANONYMOUS_ENABLED: "true"
+      GF_AUTH_ANONYMOUS_ORG_ROLE: Viewer
+    volumes:
+      - grafana_canary_data:/var/lib/grafana
+      - ./monitoring/grafana-canary-dashboard.json:/etc/grafana/provisioning/dashboards/canary-dashboard.json
+    networks:
+      - xraygpt-network
+    depends_on:
+      - prometheus-canary
+
+volumes:
+  prometheus_canary_data:
+  grafana_canary_data:
+  model_storage:
+    external: true
+
+networks:
+  xraygpt-network:
+    external: true
+
+# docker-compose.production.yml
+version: '3.8'
+
+services:
+  # API Service for Production (main traffic)
+  api-production:
+    image: xraygpt/serving:${VERSION:-latest}
+    ports:
+      - "8000:8000"
+    environment:
+      - ENVIRONMENT=production
+      - MODEL_PATH=/models/xraygpt-latest.onnx
+      - POSTGRES_CONNECTION=postgresql://xraygpt:password@postgres:5432/xraygpt
+      - LOG_LEVEL=WARNING
+    volumes:
+      - model_storage:/models
+    depends_on:
+      - postgres
+    networks:
+      - xraygpt-network
+    deploy:
+      replicas: 3
+      resources:
+        limits:
+          cpus: '4'
+          memory: 8G
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 1m
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+
+  # Reverse proxy for traffic management
+  nginx:
+    image: nginx:latest
+    ports:
+      - "80:80"
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf
+    depends_on:
+      - api-production
+      - api-canary
+    networks:
+      - xraygpt-network
+
+  # Monitoring for Production
+  prometheus-production:
+    image: prom/prometheus:v2.42.0
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./monitoring/prometheus-production.yml:/etc/prometheus/prometheus.yml
+      - prometheus_production_data:/prometheus
+    networks:
+      - xraygpt-network
+
+  grafana-production:
+    image: grafana/grafana:9.4.3
+    ports:
+      - "3000:3000"
+    environment:
+      GF_SECURITY_ADMIN_PASSWORD: admin
+      GF_SECURITY_ADMIN_USER: admin
+      GF_AUTH_ANONYMOUS_ENABLED: "true"
+      GF_AUTH_ANONYMOUS_ORG_ROLE: Viewer
+    volumes:
+      - grafana_production_data:/var/lib/grafana
+      - ./monitoring/grafana-production-dashboard.json:/etc/grafana/provisioning/dashboards/production-dashboard.json
+    networks:
+      - xraygpt-network
+    depends_on:
+      - prometheus-production
+
+volumes:
+  prometheus_production_data:
+  grafana_production_data:
+  model_storage:
+    external: true
+
+networks:
+  xraygpt-network:
+    external: true

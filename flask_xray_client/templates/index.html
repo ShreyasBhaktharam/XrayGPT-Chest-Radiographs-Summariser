@@ -1,0 +1,329 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Flask XrayGPT Client with Feedback</title>
+    <script src="[https://cdn.tailwindcss.com](https://cdn.tailwindcss.com)"></script>
+    <style>
+        body { font-family: 'Inter', sans-serif; }
+        .chat-bubble-container {
+            display: flex;
+            flex-direction: column;
+            margin-bottom: 10px;
+        }
+        .chat-bubble {
+            padding: 8px 12px;
+            border-radius: 18px;
+            margin-bottom: 4px; /* Reduced margin for bubble itself */
+            max-width: 75%;
+            word-wrap: break-word;
+        }
+        .user-bubble {
+            background-color: #3B82F6; color: white; align-self: flex-end; margin-left: auto;
+        }
+        .bot-bubble {
+            background-color: #E5E7EB; color: #1F2937; align-self: flex-start; margin-right: auto;
+        }
+        #chat-history {
+            height: 400px; overflow-y: auto; border: 1px solid #D1D5DB; 
+            padding: 10px; border-radius: 8px; display: flex; flex-direction: column;
+        }
+        #uploaded-image-preview {
+            max-width: 100%; max-height: 300px; border-radius: 8px; 
+            object-fit: contain; border: 1px solid #e5e7eb;
+        }
+        .loader {
+            border: 4px solid #f3f3f3; border-top: 4px solid #3498db; border-radius: 50%;
+            width: 24px; height: 24px; animation: spin 1s linear infinite;
+        }
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+        .feedback-actions button, .feedback-edit-area button {
+            font-size: 0.8rem; padding: 4px 8px; margin-left: 5px;
+            border-radius: 6px; transition: background-color 0.2s;
+        }
+        .feedback-actions { margin-top: 4px; align-self: flex-start; }
+        .feedback-edit-area { margin-top: 6px; width: 100%; }
+        .feedback-edit-area textarea {
+            width: calc(100% - 10px); padding: 6px; border: 1px solid #ccc; border-radius: 4px;
+            min-height: 60px; margin-bottom: 5px;
+        }
+        .feedback-message { font-size: 0.8rem; color: green; margin-top: 5px; align-self: flex-start; }
+    </style>
+    <link href="[https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap](https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap)" rel="stylesheet">
+</head>
+<body class="bg-gray-100 min-h-screen flex flex-col items-center justify-center p-4">
+
+    <div class="bg-white p-6 md:p-8 rounded-xl shadow-2xl w-full max-w-3xl">
+        <h1 class="text-3xl font-bold text-center text-gray-800 mb-6">XrayGPT Chat (with Feedback)</h1>
+
+        <div class="grid md:grid-cols-2 gap-6 mb-6">
+            <div class="flex flex-col items-center p-4 border border-gray-200 rounded-lg bg-gray-50">
+                <label for="image-upload" class="block text-sm font-medium text-gray-700 mb-2">Upload X-Ray Image:</label>
+                <input type="file" id="image-upload" accept="image/png, image/jpeg, image/jpg" class="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100 mb-3">
+                <img id="uploaded-image-preview" src="[https://placehold.co/400x300/e2e8f0/94a3b8?text=No+Image+Uploaded](https://placehold.co/400x300/e2e8f0/94a3b8?text=No+Image+Uploaded)" alt="Uploaded X-Ray" class="mt-2 bg-gray-200">
+                <p id="image-error" class="text-red-500 text-xs mt-1"></p>
+            </div>
+
+            <div class="flex flex-col">
+                <div id="chat-history" class="mb-3 bg-white">
+                    <div class="chat-bubble-container">
+                        <div class="chat-bubble bot-bubble">Upload an image and ask a question!</div>
+                    </div>
+                </div>
+                <div class="flex items-center">
+                    <input type="text" id="user-message" placeholder="Type your message..." class="flex-grow p-3 border border-gray-300 rounded-l-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-shadow">
+                    <button id="send-button" class="bg-blue-500 hover:bg-blue-600 text-white p-3 rounded-r-lg font-semibold transition-colors">Send</button>
+                    <div id="loading-spinner" class="loader hidden ml-3"></div>
+                </div>
+                 <p id="api-error" class="text-red-600 text-sm mt-2 text-center"></p>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const imageUpload = document.getElementById('image-upload');
+        const uploadedImagePreview = document.getElementById('uploaded-image-preview');
+        const userMessageInput = document.getElementById('user-message');
+        const sendButton = document.getElementById('send-button');
+        const chatHistory = document.getElementById('chat-history');
+        const loadingSpinner = document.getElementById('loading-spinner');
+        const imageError = document.getElementById('image-error');
+        const apiError = document.getElementById('api-error');
+
+        let currentBase64Image = null;
+        let messageCounter = 0; // To give unique IDs to bot messages for feedback
+
+        imageUpload.addEventListener('change', function(event) {
+            // (Same image upload handling logic as before)
+            const file = event.target.files[0];
+            imageError.textContent = '';
+            apiError.textContent = ''; 
+
+            if (file) {
+                if (file.size > 5 * 1024 * 1024) { 
+                    imageError.textContent = 'File is too large (max 5MB).';
+                    currentBase64Image = null;
+                    uploadedImagePreview.src = '[https://placehold.co/400x300/e2e8f0/94a3b8?text=Upload+Failed](https://placehold.co/400x300/e2e8f0/94a3b8?text=Upload+Failed)';
+                    return;
+                }
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    uploadedImagePreview.src = e.target.result;
+                    currentBase64Image = e.target.result.split(',')[1]; 
+                    console.log("Image loaded and converted to base64.");
+                }
+                reader.onerror = function() {
+                    imageError.textContent = 'Error reading file.';
+                    currentBase64Image = null;
+                    uploadedImagePreview.src = '[https://placehold.co/400x300/e2e8f0/94a3b8?text=Read+Error](https://placehold.co/400x300/e2e8f0/94a3b8?text=Read+Error)';
+                }
+                reader.readAsDataURL(file);
+            } else {
+                currentBase64Image = null;
+                uploadedImagePreview.src = '[https://placehold.co/400x300/e2e8f0/94a3b8?text=No+Image+Uploaded](https://placehold.co/400x300/e2e8f0/94a3b8?text=No+Image+Uploaded)';
+            }
+        });
+
+        function addMessageToChat(message, sender, originalBotResponse = null) {
+            const containerDiv = document.createElement('div');
+            containerDiv.classList.add('chat-bubble-container');
+            
+            const messageDiv = document.createElement('div');
+            messageDiv.classList.add('chat-bubble');
+            messageDiv.classList.add(sender === 'user' ? 'user-bubble' : 'bot-bubble');
+            messageDiv.textContent = message; // Using textContent for basic security
+            
+            containerDiv.appendChild(messageDiv);
+
+            if (sender === 'bot' && originalBotResponse) {
+                const messageId = `bot-msg-${messageCounter++}`;
+                containerDiv.id = messageId; // Assign an ID to the container for later reference
+                messageDiv.dataset.originalResponse = originalBotResponse; // Store original for feedback
+
+                const feedbackDiv = document.createElement('div');
+                feedbackDiv.classList.add('feedback-actions');
+                feedbackDiv.innerHTML = `
+                    <button onclick="handleFeedback('${messageId}', 'accept')" class="bg-green-500 hover:bg-green-600 text-white">Accept</button>
+                    <button onclick="handleFeedback('${messageId}', 'modify')" class="bg-yellow-500 hover:bg-yellow-600 text-black">Modify</button>
+                    <button onclick="handleFeedback('${messageId}', 'reject')" class="bg-red-500 hover:bg-red-600 text-white">Reject</button>
+                `;
+                containerDiv.appendChild(feedbackDiv);
+            }
+            
+            chatHistory.appendChild(containerDiv);
+            chatHistory.scrollTop = chatHistory.scrollHeight;
+        }
+        
+        window.handleFeedback = async function(messageId, feedbackType) {
+            const messageContainer = document.getElementById(messageId);
+            if (!messageContainer) return;
+
+            const botMessageDiv = messageContainer.querySelector('.bot-bubble');
+            const originalResponse = botMessageDiv.dataset.originalResponse;
+            const feedbackActionsDiv = messageContainer.querySelector('.feedback-actions');
+            
+            let modifiedResponse = null;
+
+            if (feedbackType === 'modify') {
+                const existingEditArea = messageContainer.querySelector('.feedback-edit-area');
+                if (existingEditArea) { existingEditArea.remove(); } // Remove if already exists
+
+                const editArea = document.createElement('div');
+                editArea.classList.add('feedback-edit-area');
+                editArea.innerHTML = `
+                    <textarea class="w-full p-2 border rounded-md">${originalResponse}</textarea>
+                    <button class="bg-blue-500 hover:bg-blue-600 text-white submit-feedback">Submit Modification</button>
+                    <button class="bg-gray-300 hover:bg-gray-400 text-black cancel-feedback">Cancel</button>
+                `;
+                messageContainer.appendChild(editArea);
+                feedbackActionsDiv.classList.add('hidden'); // Hide original buttons
+
+                editArea.querySelector('.submit-feedback').onclick = async () => {
+                    modifiedResponse = editArea.querySelector('textarea').value;
+                    await submitFeedbackToServer(feedbackType, originalResponse, modifiedResponse, messageContainer, feedbackActionsDiv);
+                    editArea.remove();
+                };
+                editArea.querySelector('.cancel-feedback').onclick = () => {
+                    editArea.remove();
+                    feedbackActionsDiv.classList.remove('hidden'); // Show original buttons
+                };
+                return; // Don't submit 'modify' directly, wait for textarea submission
+            } else if (feedbackType === 'reject') {
+                 const existingEditArea = messageContainer.querySelector('.feedback-edit-area');
+                if (existingEditArea) { existingEditArea.remove(); }
+
+                const editArea = document.createElement('div');
+                editArea.classList.add('feedback-edit-area');
+                editArea.innerHTML = `
+                    <textarea class="w-full p-2 border rounded-md" placeholder="Please provide your corrected response..."></textarea>
+                    <button class="bg-blue-500 hover:bg-blue-600 text-white submit-feedback">Submit New Response</button>
+                    <button class="bg-gray-300 hover:bg-gray-400 text-black cancel-feedback">Cancel</button>
+                `;
+                messageContainer.appendChild(editArea);
+                feedbackActionsDiv.classList.add('hidden');
+
+                editArea.querySelector('.submit-feedback').onclick = async () => {
+                    modifiedResponse = editArea.querySelector('textarea').value;
+                    if (!modifiedResponse.trim()) {
+                        alert("Please provide your new response for rejection.");
+                        return;
+                    }
+                    await submitFeedbackToServer(feedbackType, originalResponse, modifiedResponse, messageContainer, feedbackActionsDiv);
+                    editArea.remove();
+                };
+                 editArea.querySelector('.cancel-feedback').onclick = () => {
+                    editArea.remove();
+                    feedbackActionsDiv.classList.remove('hidden');
+                };
+                return; // Don't submit 'reject' directly
+            }
+            
+            // For 'accept' or direct submissions if modify/reject logic changes
+            await submitFeedbackToServer(feedbackType, originalResponse, modifiedResponse, messageContainer, feedbackActionsDiv);
+        }
+
+        async function submitFeedbackToServer(feedbackType, originalResponse, modifiedResponse, messageContainer, feedbackActionsDiv) {
+            const payload = {
+                feedback_type: feedbackType,
+                original_response: originalResponse,
+            };
+            if (modifiedResponse !== null) {
+                payload.modified_response = modifiedResponse;
+            }
+
+            try {
+                loadingSpinner.classList.remove('hidden'); // Show spinner for feedback
+                const response = await fetch('/feedback_api', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload),
+                });
+                const data = await response.json();
+                loadingSpinner.classList.add('hidden');
+
+                if (!response.ok) {
+                    console.error('Feedback API Error:', data);
+                    alert(`Error submitting feedback: ${data.error || 'Unknown error'}`);
+                    if (feedbackActionsDiv) feedbackActionsDiv.classList.remove('hidden'); // Show buttons again on error
+                } else {
+                    console.log('Feedback submitted:', data);
+                    if (feedbackActionsDiv) feedbackActionsDiv.remove(); // Remove buttons on success
+                    
+                    const feedbackMsgDiv = document.createElement('div');
+                    feedbackMsgDiv.classList.add('feedback-message', 'text-green-600');
+                    feedbackMsgDiv.textContent = `Feedback (${feedbackType}) submitted! Thank you.`;
+                    messageContainer.appendChild(feedbackMsgDiv);
+                }
+            } catch (error) {
+                loadingSpinner.classList.add('hidden');
+                console.error('Network error during feedback:', error);
+                alert(`Network error submitting feedback: ${error.message}`);
+                if (feedbackActionsDiv) feedbackActionsDiv.classList.remove('hidden');
+            }
+        }
+
+
+        async function sendMessage() {
+            // (sendMessage logic from previous version, but calls addMessageToChat with original response for bot)
+            const userMessage = userMessageInput.value.trim();
+            apiError.textContent = ''; 
+
+            if (!currentBase64Image) {
+                apiError.textContent = 'Please upload an image first.';
+                return;
+            }
+            if (!userMessage && !confirm("Send empty message with image?")) { // Allow sending empty message if user confirms
+                // Or, if you always require a message:
+                // apiError.textContent = 'Please type a message.';
+                // return;
+            }
+
+            addMessageToChat(userMessage || "(Sent with no text)", 'user'); // Display user message
+            userMessageInput.value = ''; 
+            loadingSpinner.classList.remove('hidden');
+            sendButton.disabled = true;
+
+            const payload = {
+                image_base64: currentBase64Image,
+                message: userMessage,
+            };
+
+            try {
+                const response = await fetch('/chat_api', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload),
+                });
+                const data = await response.json();
+
+                if (!response.ok) {
+                    console.error('API Error Response:', data);
+                    const errorMsg = data.error || `API request failed with status ${response.status}`;
+                    addMessageToChat(`Error: ${errorMsg}`, 'bot', `Error: ${errorMsg}`); // Pass error as original for feedback context
+                    apiError.textContent = `Error: ${errorMsg}`;
+                } else {
+                    // IMPORTANT: Pass data.bot_response as the originalBotResponse for feedback
+                    addMessageToChat(data.bot_response, 'bot', data.bot_response);
+                }
+            } catch (error) {
+                console.error('Network or unexpected error:', error);
+                const errorText = `Network error or server is unreachable. (${error.message || error})`;
+                addMessageToChat(errorText, 'bot', errorText); // Pass error as original
+                apiError.textContent = errorText;
+            } finally {
+                loadingSpinner.classList.add('hidden');
+                sendButton.disabled = false;
+            }
+        }
+
+        sendButton.addEventListener('click', sendMessage);
+        userMessageInput.addEventListener('keypress', function(event) {
+            if (event.key === 'Enter') {
+                sendMessage();
+            }
+        });
+    </script>
+</body>
+</html>
+

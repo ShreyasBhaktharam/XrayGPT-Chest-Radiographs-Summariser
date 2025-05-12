@@ -1,0 +1,553 @@
+version: '3.8'
+
+services:
+  # API Service for Staging
+  api-staging:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.serving
+    image: xraygpt/serving:${VERSION:-latest}
+    ports:
+      - "8001:8000"
+    environment:
+      - ENVIRONMENT=staging
+      - MODEL_PATH=/models/xraygpt-latest.onnx
+      - POSTGRES_CONNECTION=postgresql://xraygpt:password@postgres:5432/xraygpt
+      - LOG_LEVEL=DEBUG
+    volumes:
+      - model_storage:/models
+    depends_on:
+      - postgres
+    networks:
+      - xraygpt-network
+    deploy:
+      resources:
+        limits:
+          cpus: '2'
+          memory: 4G
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+  # Monitoring for Staging
+  prometheus-staging:
+    image: prom/prometheus:v2.42.0
+    ports:
+      - "9091:9090"
+    volumes:
+      - ./monitoring/prometheus-staging.yml:/etc/prometheus/prometheus.yml
+      - prometheus_staging_data:/prometheus
+    networks:
+      - xraygpt-network
+
+  grafana-staging:
+    image: grafana/grafana:9.4.3
+    ports:
+      - "3001:3000"
+    environment:
+      GF_SECURITY_ADMIN_PASSWORD: admin
+      GF_SECURITY_ADMIN_USER: admin
+      GF_AUTH_ANONYMOUS_ENABLED: "true"
+      GF_AUTH_ANONYMOUS_ORG_ROLE: Viewer
+    volumes:
+      - grafana_staging_data:/var/lib/grafana
+      - ./monitoring/grafana-staging-dashboard.json:/etc/grafana/provisioning/dashboards/staging-dashboard.json
+    networks:
+      - xraygpt-network
+    depends_on:
+      - prometheus-staging
+
+volumes:
+  prometheus_staging_data:
+  grafana_staging_data:
+  model_storage:
+    external: true
+
+networks:
+  xraygpt-network:
+    external: true
+
+
+# monitoring/prometheus-staging.yml
+global:
+  scrape_interval: 15s
+  evaluation_interval: 15s
+
+scrape_configs:
+  - job_name: 'xraygpt-staging'
+    static_configs:
+      - targets: ['api-staging:8000']
+    metrics_path: '/metrics'
+    scheme: http
+
+# monitoring/prometheus-canary.yml
+global:
+  scrape_interval: 15s
+  evaluation_interval: 15s
+
+scrape_configs:
+  - job_name: 'xraygpt-canary'
+    static_configs:
+      - targets: ['api-canary:8000']
+    metrics_path: '/metrics'
+    scheme: http
+
+# monitoring/prometheus-production.yml
+global:
+  scrape_interval: 15s
+  evaluation_interval: 15s
+
+scrape_configs:
+  - job_name: 'xraygpt-production'
+    static_configs:
+      - targets: ['api-production:8000']
+    metrics_path: '/metrics'
+    scheme: http
+
+# 4. ANSIBLE PLAYBOOK FOR DEPLOYMENT WORKFLOW
+
+# ansible/deploy.yml
+---
+- name: Deploy XrayGPT to Staging, Canary, and Production
+  hosts: xraygpt_servers
+  become: yes
+  vars:
+    version: "{{ lookup('env', 'VERSION') | default('latest', true) }}"
+    deploy_environment: "{{ lookup('env', 'DEPLOY_ENV') | default('staging', true) }}"
+  tasks:
+    - name: Ensure Docker is installed
+      apt:
+        name: 
+          - docker.io
+          - docker-compose
+        state: present
+        update_cache: yes
+      
+    - name: Create required directories
+      file:
+        path: "{{ item }}"
+        state: directory
+        mode: '0755'
+      with_items:
+        - /opt/xraygpt/nginx
+        - /opt/xraygpt/monitoring
+
+    - name: Copy Docker Compose files
+      copy:
+        src: "{{ item.src }}"
+        dest: "{{ item.dest }}"
+      with_items:
+        - { src: 'docker-compose.staging.yml', dest: '/opt/xraygpt/docker-compose.staging.yml' }
+        - { src: 'docker-compose.canary.yml', dest: '/opt/xraygpt/docker-compose.canary.yml' }
+        - { src: 'docker-compose.production.yml', dest: '/opt/xraygpt/docker-compose.production.yml' }
+        - { src: 'monitoring/prometheus-staging.yml', dest: '/opt/xraygpt/monitoring/prometheus-staging.yml' }
+        - { src: 'monitoring/prometheus-canary.yml', dest: '/opt/xraygpt/monitoring/prometheus-canary.yml' }
+        - { src: 'monitoring/prometheus-production.yml', dest: '/opt/xraygpt/monitoring/prometheus-production.yml' }
+
+    - name: Deploy to Staging
+      shell: |
+        cd /opt/xraygpt
+        VERSION={{ version }} docker-compose -f docker-compose.staging.yml up -d
+      when: deploy_environment == 'staging'
+
+    - name: Deploy to Canary
+      shell: |
+        cd /opt/xraygpt
+        VERSION={{ version }} docker-compose -f docker-compose.canary.yml up -d
+      when: deploy_environment == 'canary'
+
+    - name: Deploy to Production
+      shell: |
+        cd /opt/xraygpt
+        VERSION={{ version }} docker-compose -f docker-compose.production.yml up -d
+      when: deploy_environment == 'production'
+
+    - name: Check deployment health
+      uri:
+        url: "http://localhost:{{ item.port }}/health"
+        method: GET
+        status_code: 200
+        validate_certs: no
+      register: health_check
+      retries: 6
+      delay: 10
+      until: health_check.status == 200
+      with_items:
+        - { name: 'staging', port: 8001 }
+        - { name: 'canary', port: 8002 }
+        - { name: 'production', port: 8000 }
+      when: item.name == deploy_environment
+
+# 5. TERRAFORM MODIFICATIONS FOR ENVIRONMENT MANAGEMENT
+
+# terraform/main.tf (add this section to your existing file)
+resource "openstack_compute_instance_v2" "xraygpt_staging_vm" {
+  name            = "xraygpt-staging"
+  image_name      = var.image_name
+  flavor_name     = var.flavor_name
+  key_pair        = var.key_pair_name
+  security_groups = concat(var.security_groups, [openstack_networking_secgroup_v2.xraygpt_sg.name])
+
+  network {
+    name = var.network_name
+  }
+
+  # Bootstrap script
+  user_data = <<-EOF
+    #!/bin/bash
+    # Set up for staging environment
+    mkdir -p /opt/xraygpt/staging
+    echo 'ENVIRONMENT=staging' > /opt/xraygpt/staging/.env
+  EOF
+}
+
+resource "openstack_compute_instance_v2" "xraygpt_production_vm" {
+  name            = "xraygpt-production"
+  image_name      = var.image_name
+  flavor_name     = var.flavor_name
+  key_pair        = var.key_pair_name
+  security_groups = concat(var.security_groups, [openstack_networking_secgroup_v2.xraygpt_sg.name])
+
+  network {
+    name = var.network_name
+  }
+
+  # Bootstrap script
+  user_data = <<-EOF
+    #!/bin/bash
+    # Set up for production environment
+    mkdir -p /opt/xraygpt/production
+    echo 'ENVIRONMENT=production' > /opt/xraygpt/production/.env
+  EOF
+}
+
+# Create and assign floating IPs for each environment
+resource "openstack_networking_floatingip_v2" "xraygpt_staging_floating_ip" {
+  pool = "public"
+}
+
+resource "openstack_compute_floatingip_associate_v2" "xraygpt_staging_floating_ip_associate" {
+  floating_ip = openstack_networking_floatingip_v2.xraygpt_staging_floating_ip.address
+  instance_id = openstack_compute_instance_v2.xraygpt_staging_vm.id
+}
+
+resource "openstack_networking_floatingip_v2" "xraygpt_production_floating_ip" {
+  pool = "public"
+}
+
+resource "openstack_compute_floatingip_associate_v2" "xraygpt_production_floating_ip_associate" {
+  floating_ip = openstack_networking_floatingip_v2.xraygpt_production_floating_ip.address
+  instance_id = openstack_compute_instance_v2.xraygpt_production_vm.id
+}
+
+# 6. CI/CD WORKFLOW FOR PROMOTION BETWEEN ENVIRONMENTS
+
+# ci-cd/.github/workflows/staged_deployment.yml
+name: Staged Deployment Pipeline
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'api/**'
+      - 'training/**'
+      - 'docker/**'
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: 'Target environment for deployment'
+        required: true
+        default: 'staging'
+        type: choice
+        options:
+          - staging
+          - canary
+          - production
+      version:
+        description: 'Version to deploy'
+        required: false
+        default: 'latest'
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v2
+
+      - name: Login to DockerHub
+        uses: docker/login-action@v2
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      - name: Set version
+        id: vars
+        run: |
+          if [ "${{ github.event_name }}" == "workflow_dispatch" ]; then
+            echo "VERSION=${{ github.event.inputs.version }}" >> $GITHUB_ENV
+          else
+            echo "VERSION=${GITHUB_SHA::8}" >> $GITHUB_ENV
+          fi
+
+      - name: Build and push Serving image
+        uses: docker/build-push-action@v4
+        with:
+          context: .
+          file: ./docker/Dockerfile.serving
+          push: true
+          tags: xraygpt/serving:${{ env.VERSION }},xraygpt/serving:latest
+
+  deploy-staging:
+    needs: build
+    runs-on: ubuntu-latest
+    if: ${{ github.event_name == 'push' || github.event.inputs.environment == 'staging' }}
+    environment: staging
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: Set up Ansible
+        run: |
+          pip install ansible
+
+      - name: Configure SSH key
+        run: |
+          mkdir -p ~/.ssh
+          echo "${{ secrets.SSH_PRIVATE_KEY }}" > ~/.ssh/id_rsa
+          chmod 600 ~/.ssh/id_rsa
+          echo "${{ secrets.SSH_KNOWN_HOSTS }}" > ~/.ssh/known_hosts
+
+      - name: Deploy to Staging
+        run: |
+          VERSION=${GITHUB_SHA::8} DEPLOY_ENV=staging ansible-playbook -i ansible/inventory.ini ansible/deploy.yml
+
+      - name: Run Load Tests
+        run: |
+          # Install k6 for load testing
+          sudo apt-key adv --keyserver hkp://keyserver.ubuntu.com:80 --recv-keys C5AD17C747E3415A3642D57D77C6C491D6AC1D69
+          echo "deb https://dl.k6.io/deb stable main" | sudo tee /etc/apt/sources.list.d/k6.list
+          sudo apt-get update
+          sudo apt-get install k6
+          
+          # Run load test
+          k6 run tests/load-test.js -e URL=http://${{ secrets.STAGING_IP }}:8001
+
+  promote-to-canary:
+    needs: deploy-staging
+    runs-on: ubuntu-latest
+    if: ${{ github.event.inputs.environment == 'canary' }}
+    environment: canary
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: Set up Ansible
+        run: |
+          pip install ansible
+
+      - name: Configure SSH key
+        run: |
+          mkdir -p ~/.ssh
+          echo "${{ secrets.SSH_PRIVATE_KEY }}" > ~/.ssh/id_rsa
+          chmod 600 ~/.ssh/id_rsa
+          echo "${{ secrets.SSH_KNOWN_HOSTS }}" > ~/.ssh/known_hosts
+
+      - name: Deploy to Canary
+        run: |
+          VERSION=${GITHUB_SHA::8} DEPLOY_ENV=canary ansible-playbook -i ansible/inventory.ini ansible/deploy.yml
+
+      - name: Monitor Canary Performance
+        run: |
+          # Install monitoring tool
+          pip install prometheus-api-client requests
+          
+          # Run monitoring script to collect metrics for 10 minutes
+          python tests/monitor_canary.py --host ${{ secrets.CANARY_IP }} --port 9092 --duration 600
+
+  promote-to-production:
+    needs: [deploy-staging, promote-to-canary]
+    runs-on: ubuntu-latest
+    if: ${{ github.event.inputs.environment == 'production' }}
+    environment: production
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: Set up Ansible
+        run: |
+          pip install ansible
+
+      - name: Configure SSH key
+        run: |
+          mkdir -p ~/.ssh
+          echo "${{ secrets.SSH_PRIVATE_KEY }}" > ~/.ssh/id_rsa
+          chmod 600 ~/.ssh/id_rsa
+          echo "${{ secrets.SSH_KNOWN_HOSTS }}" > ~/.ssh/known_hosts
+
+      - name: Deploy to Production
+        run: |
+          VERSION=${GITHUB_SHA::8} DEPLOY_ENV=production ansible-playbook -i ansible/inventory.ini ansible/deploy.yml
+
+# 7. LOAD TESTING SCRIPT
+
+# tests/load-test.js
+import http from 'k6/http';
+import { sleep, check } from 'k6';
+
+export let options = {
+  stages: [
+    { duration: '1m', target: 50 },   // Ramp up to 50 virtual users over 1 minute
+    { duration: '3m', target: 50 },   // Stay at 50 virtual users for 3 minutes
+    { duration: '1m', target: 100 },  // Ramp up to 100 virtual users over 1 minute
+    { duration: '5m', target: 100 },  // Stay at 100 virtual users for 5 minutes
+    { duration: '1m', target: 0 },    // Ramp down to 0 virtual users
+  ],
+  thresholds: {
+    http_req_duration: ['p(95)<500'], // 95% of requests should be below 500ms
+    http_req_failed: ['rate<0.01'],   // Less than 1% of requests should fail
+  },
+};
+
+export default function() {
+  // Load test for prediction endpoint with sample X-ray image
+  const url = __ENV.URL || 'http://localhost:8000';
+  
+  // Test health endpoint
+  let healthRes = http.get(`${url}/health`);
+  check(healthRes, {
+    'health status is 200': (r) => r.status === 200,
+  });
+  
+  // Test prediction with small image (mock for testing)
+  let payload = {
+    patient_id: 'test-123',
+    view_position: 'PA',
+    patient_gender: 'M',
+    patient_age: 45
+  };
+  
+  // Create small binary file for testing
+  let binFile = http.file('dummy_image.png', 'image/png');
+  
+  let res = http.post(`${url}/predict`, {
+    file: binFile,
+    metadata: JSON.stringify(payload)
+  });
+  
+  check(res, {
+    'status is 200': (r) => r.status === 200,
+    'has confidence score': (r) => r.json('confidence') !== undefined,
+    'response time is acceptable': (r) => r.timings.duration < 1000
+  });
+  
+  sleep(1);
+}
+
+# 8. CANARY MONITORING SCRIPT
+
+# tests/monitor_canary.py
+#!/usr/bin/env python3
+import argparse
+import time
+import requests
+import json
+from datetime import datetime, timedelta
+
+def get_metrics(host, port, query):
+    """Query Prometheus for metrics"""
+    url = f"http://{host}:{port}/api/v1/query"
+    response = requests.get(url, params={'query': query})
+    if response.status_code != 200:
+        print(f"Error querying Prometheus: {response.text}")
+        return None
+    return response.json()
+
+def monitor_canary(host, port, duration):
+    """Monitor canary deployment for the specified duration"""
+    start_time = datetime.now()
+    end_time = start_time + timedelta(seconds=duration)
+    
+    print(f"Starting canary monitoring at {start_time.strftime('%Y-%m-%d %H:%M:%S')}")
+    print(f"Will monitor for {duration} seconds until {end_time.strftime('%Y-%m-%d %H:%M:%S')}")
+    
+    metrics = {
+        'request_duration': [],
+        'error_rate': [],
+        'requests_per_second': []
+    }
+    
+    while datetime.now() < end_time:
+        # Query for request duration (95th percentile)
+        duration_query = "histogram_quantile(0.95, sum(rate(http_request_duration_seconds_bucket[5m])) by (le))"
+        duration_result = get_metrics(host, port, duration_query)
+        if duration_result and duration_result.get('data', {}).get('result'):
+            value = float(duration_result['data']['result'][0]['value'][1])
+            metrics['request_duration'].append(value)
+            print(f"95th percentile request duration: {value:.3f}s")
+        
+        # Query for error rate
+        error_query = "sum(rate(http_request_errors_total[5m])) / sum(rate(http_requests_total[5m]))"
+        error_result = get_metrics(host, port, error_query)
+        if error_result and error_result.get('data', {}).get('result'):
+            value = float(error_result['data']['result'][0]['value'][1])
+            metrics['error_rate'].append(value)
+            print(f"Error rate: {value:.3%}")
+        
+        # Query for requests per second
+        rps_query = "sum(rate(http_requests_total[5m]))"
+        rps_result = get_metrics(host, port, rps_query)
+        if rps_result and rps_result.get('data', {}).get('result'):
+            value = float(rps_result['data']['result'][0]['value'][1])
+            metrics['requests_per_second'].append(value)
+            print(f"Requests per second: {value:.2f}")
+        
+        # Wait before next check
+        time.sleep(60)  # Check every minute
+    
+    # Calculate averages
+    avg_duration = sum(metrics['request_duration']) / len(metrics['request_duration']) if metrics['request_duration'] else 0
+    avg_error_rate = sum(metrics['error_rate']) / len(metrics['error_rate']) if metrics['error_rate'] else 0
+    avg_rps = sum(metrics['requests_per_second']) / len(metrics['requests_per_second']) if metrics['requests_per_second'] else 0
+    
+    print("\nCanary Monitoring Summary:")
+    print(f"Average 95th percentile request duration: {avg_duration:.3f}s")
+    print(f"Average error rate: {avg_error_rate:.3%}")
+    print(f"Average requests per second: {avg_rps:.2f}")
+    
+    # Determine if canary is stable enough for production
+    is_stable = avg_duration < 0.5 and avg_error_rate < 0.01
+    
+    print(f"\nCanary stability assessment: {'STABLE' if is_stable else 'UNSTABLE'}")
+    print(f"Recommendation: {'Promote to production' if is_stable else 'Fix issues before promotion'}")
+    
+    # Save metrics to file
+    with open('canary_metrics.json', 'w') as f:
+        json.dump(metrics, f)
+    
+    # Exit with appropriate code for CI/CD pipeline
+    return 0 if is_stable else 1
+
+if __name__ == "__main__":
+    parser = argparse.ArgumentParser(description='Monitor canary deployment')
+    parser.add_argument('--host', default='localhost', help='Prometheus host')
+    parser.add_argument('--port', default=9092, type=int, help='Prometheus port')
+    parser.add_argument('--duration', default=600, type=int, help='Monitoring duration in seconds')
+    args = parser.parse_args()
+    
+    exit(monitor_canary(args.host, args.port, args.duration))
+
+# 9. ANSIBLE INVENTORY FILE
+
+# ansible/inventory.ini
+[xraygpt_servers]
+xraygpt-staging ansible_host=<STAGING_IP> ansible_user=ubuntu
+xraygpt-production ansible_host=<PRODUCTION_IP> ansible_user=ubuntu
+
+[staging]
+xraygpt-staging
+
+[production]
+xraygpt-production
