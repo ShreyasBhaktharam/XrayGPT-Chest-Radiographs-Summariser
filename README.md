@@ -79,11 +79,36 @@ Misclassifying sensitive data is an ethics concern and there is a possibilty tha
 - **Lecture Relevance:** Implements **immutable infrastructure principles and microservices deployment**.
 
 ---
-### Next Steps
-1. Set up **Chameleon Cloud infrastructure** (VMs, GPUs, Storage).
-2. Implement **data preprocessing pipeline** and **ETL workflow**.
-3. Train **XrayGPT models** using distributed training strategies.
-4. Develop and deploy **inference API** with real-time monitoring.
-5. Implement **CI/CD, staged deployment, and monitoring dashboards**.
+### Steps to run
 
-**Final Goal:** A fully automated, scalable, and cloud-native chest X-ray analysis system for radiologists and healthcare providers.
+Bring up the infrastructure using these commands:
+```
+terraform plan
+terraform apply
+```
+
+After that, run the ansible playbook with this command:
+```
+ansible-playbook -i inventory.ini xraygpt-deploy.yml
+```
+
+### Our unique value proposition
+XrayGPT is a machine learning system designed to augment radiology workflows in small-to-medium private hospitals by providing real-time, automated preliminary interpretations of chest X-rays. It integrates seamlessly into existing hospital imaging services to:
+Accelerate Diagnosis: Generate structured reports (findings + impressions) in <30 seconds.
+Reduce Operational Costs: Slash fees for external radiology services by 40–60%.
+Enhance Clinician Efficiency: Prioritize critical cases (e.g., pneumothorax, consolidation) for urgent review.
+
+#### Non-ML Status Quo:
+In target hospitals, the current workflow involves:
+Manual Interpretation: General practitioners or junior radiologists draft preliminary reports, often lacking specialized expertise.
+Outsourcing: Hospitals send X-rays to third-party radiology services, incurring delays (6–24 hours) and high costs (50–50–150 per study).
+Inefficient Triage: Critical cases (e.g., collapsed lungs) may not be flagged promptly, risking patient outcomes.
+
+#### Business Metric:
+Reduction in average report turnaround time (from image acquisition to preliminary report delivery).
+Baseline: 8–12 hours (due to outsourcing or backlog).
+Target with XrayGPT: ≤30 minutes.
+Measurement: Track time stamps from image upload to report generation in the hospital’s EHR system.
+
+### Different dashboards and training runs
+
