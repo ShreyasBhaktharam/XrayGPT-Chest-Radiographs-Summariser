@@ -126,6 +126,7 @@ python3 app.py --cfg-path eval_configs/xraygpt_eval.yaml --gpu-id 0
 ![grafana-2](grafana_dashboard_responses.jpeg)
 #### Mlflow
 ![mlflow](mlflow-experiments.png)
+![mlflow](mlflow-artifacts.png)
 #### FastAPI inference latency
 ![fastapi](20-requests-load-test.jpeg)
 ![fastapi](200-load-test-fail.jpeg)
