@@ -6,7 +6,17 @@ XrayGPT-CloudMed is an AI-powered chest radiograph analysis system designed to a
 
 Misclassifying sensitive data is an ethics concern and there is a possibilty that our system will make mistakes. To mitigate this risk and inform the radiologists, we will attach a confidence score along with the output to give an idea about the quality of the prediction and use their discretion to make an informed decision. 
 
-**Business Metric:** Reduction in **radiologist review time** and improved **diagnostic accuracy**.
+#### Non-ML Status Quo:
+In target hospitals, the current workflow involves:
+Manual Interpretation: General practitioners or junior radiologists draft preliminary reports, often lacking specialized expertise.
+Outsourcing: Hospitals send X-rays to third-party radiology services, incurring delays (6–24 hours) and high costs (50–50–150 per study).
+Inefficient Triage: Critical cases (e.g., collapsed lungs) may not be flagged promptly, risking patient outcomes.
+
+#### Business Metric:
+Reduction in average report turnaround time (from image acquisition to preliminary report delivery).
+Baseline: 8–12 hours (due to outsourcing or backlog).
+Target with XrayGPT: ≤30 minutes.
+Measurement: Track time stamps from image upload to report generation in the hospital’s EHR system.
 
 ---
 ### Contributors
@@ -91,24 +101,6 @@ After that, run the ansible playbook with this command:
 ```
 ansible-playbook -i inventory.ini xraygpt-deploy.yml
 ```
-
-### Our unique value proposition
-XrayGPT is a machine learning system designed to augment radiology workflows in small-to-medium private hospitals by providing real-time, automated preliminary interpretations of chest X-rays. It integrates seamlessly into existing hospital imaging services to:
-Accelerate Diagnosis: Generate structured reports (findings + impressions) in <30 seconds.
-Reduce Operational Costs: Slash fees for external radiology services by 40–60%.
-Enhance Clinician Efficiency: Prioritize critical cases (e.g., pneumothorax, consolidation) for urgent review.
-
-#### Non-ML Status Quo:
-In target hospitals, the current workflow involves:
-Manual Interpretation: General practitioners or junior radiologists draft preliminary reports, often lacking specialized expertise.
-Outsourcing: Hospitals send X-rays to third-party radiology services, incurring delays (6–24 hours) and high costs (50–50–150 per study).
-Inefficient Triage: Critical cases (e.g., collapsed lungs) may not be flagged promptly, risking patient outcomes.
-
-#### Business Metric:
-Reduction in average report turnaround time (from image acquisition to preliminary report delivery).
-Baseline: 8–12 hours (due to outsourcing or backlog).
-Target with XrayGPT: ≤30 minutes.
-Measurement: Track time stamps from image upload to report generation in the hospital’s EHR system.
 
 ### Different dashboards and training runs
 
