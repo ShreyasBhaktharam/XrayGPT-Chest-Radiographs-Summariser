@@ -24,7 +24,7 @@ Measurement: Track time stamps from image upload to report generation in the hos
 | Name                            | Responsible for | Link to their commits in this repo |
 |---------------------------------|-----------------|------------------------------------|
 | All team members                | System Design, DevOps, CI/CD & Monitoring, Deployment | [All commits](https://github.com/ShreyasBhaktharam/XrayGPT-Chest-Radiographs-Summariser/commits/master/) |
-| Monish Raman Vishakraman                   | Model serving and optimization | [Monish's commits]() |
+| Monish Raman Vishakraman                   | Model serving and optimization | [Monish's commits](https://github.com/ShreyasBhaktharam/XrayGPT-Chest-Radiographs-Summariser/commits/master/?author=saltnpepper12) |
 | Shreyas Bhaktharam                   | Data Pipeline & Infrastructure setup | [Shreyas's commits](https://github.com/ShreyasBhaktharam/XrayGPT-Chest-Radiographs-Summariser/commits?author=ShreyasBhaktharam) |
 | Rohan Dhengale                   | Model Development & Training | [Rohan's commits]() |
 
