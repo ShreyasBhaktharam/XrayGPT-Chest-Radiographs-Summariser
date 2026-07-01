@@ -167,7 +167,7 @@ resource "openstack_compute_instance_v2" "xraygpt_vm" {
           - xraygpt-network
     
       kafka:
-        image: bitnami/kafka:3.4
+        image: soldevelo/kafka:3.4
         depends_on:
           - zookeeper
         ports:
